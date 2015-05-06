@@ -6,14 +6,13 @@
 using namespace std;
 
 class edge{
- private:
+ public:
   int v;
   /*
     accept
     0 for empty string
    */
   char accept;
- public:
   edge(){}
   edge(int a, char b)
     {
@@ -27,9 +26,9 @@ class graph{
  public:
   int newnode();
   void adde(int u, int v, char c);
-  vector<edge>::iterator getalledge(int u);
+  vector<edge>::iterator edge_begin(int u);
+  vector<edge>::iterator edge_end(int u);
+  int node_sz();
 };
-
-graph genNFA(FILE* in);
 
 #endif
