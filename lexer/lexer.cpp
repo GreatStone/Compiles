@@ -13,12 +13,17 @@
 #include "lexer.h"
 using namespace std;
 
+typedef pair<int,int> pii;
+
 int env_sz;
 map<string,int> env_symbols;
 vector<string> rules;
 vector<int> s_symbols;
 map<int,int> end_sym_id;
 map<int,int> end_id_sym;
+map<int,int> end_dfa_nfa;
+map<int,int> end_nfa_dfa;
+
 const int max_node = 1000;
 
 int graph::newnode ()
@@ -32,17 +37,17 @@ void graph::adde (int u, int v, char c)
   save[u].push_back(edge(v,c));
 }
 
-int graph::node_sz ()
+int graph::node_sz () const
 {
   return save.size();
 }
 
-vector<edge>::iterator graph::edge_begin (int u)
+vector<edge>::iterator graph::edge_begin (int u) const
 {
   return save[u].begin();
 }
 
-vector<edge>::iterator graph::edge_end (int u)
+vector<edge>::iterator graph::edge_end (int u) const
 {
   return save[u].end();
 }
@@ -161,18 +166,77 @@ void con_NFA_DFA (const graph& nfa, graph& dfa)
   bitset<max_node> start;
   map< bitset<max_node>, int> new_node_id;
   queue< bitset<max_node> > que;
+  start.set(0);
   que.push(start);
-  vector< int[128] > save;
+  new_node_id.insert (make_pair(start,0));
+  dfa.newnode();
+  
   while (!que.empty())
     {
       bitset<max_node> cur = que.front();
       que.pop();
+      int i;
+      for (i = 0; i < max_node; i++)
+	{
+	  if (start.test(i) && (!in0.test(i) || !in1.test(i)))
+	    {
+	      for (int j = 32; j < 127; j++)
+		{
+		  bitset<max_node> in0;
+		  bitset<max_node> in1;
+		  dfs (nfa, i, 1, j, in0, in1);
+		  if (in0.none())
+		    continue;
+		  it = new_node_id.find (in0);
+		  if (it == new_node_id.end())
+		    {
+		      new_node_id.insert(make_pair(in0, new_node_id.size()));
+		      int e = dfa.newnode();
+		      dfa.adde(cur, e, j);
+		    }
+		}
+	    }
+	}
     }
 }
 
-void dfs (const graph& nfa, const bitset<max_node> & from, bitset<max_node> & res, int acchar, int rest)
+void dfs (const graph& nfa, int src, int rest, int acchar, bitset<max_node> & res0, bitset<max_node> & res1)
 {
-  
+  vector<edge>::iterator it;
+  for (it = nfa.edge_begin(src); it != nfa.edge_end(src); it++)
+    {
+      int v = it->v;
+      if (res0.test(v) && res1.test(v))
+	continue;
+      else if (it->accept != 0 && it->accept == acchar)
+	{
+	  if (rest == 0)
+	    continue;
+	  else
+	    {
+	      if (res0.test(v))
+		continue;
+	      res0.set(v);
+	      dfs(nfa, v, 0, acchar, res0, res1);
+	    }
+	}
+      else if (it->accept == 0)
+	{
+	  if (rest)
+	    {
+	      if (res1.test(v))
+		continue;
+	      res1.set(v);
+	    }
+	  else
+	    {
+	      if (res0.test(v))
+		continue;
+	      res0.set(v);
+	    }
+	  dfs(nfa, v, rest, acchar, res0, res1);
+	}
+    }
 }
 
 int main (int argc, char * argv[])

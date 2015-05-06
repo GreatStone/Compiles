@@ -26,9 +26,9 @@ class graph{
  public:
   int newnode();
   void adde(int u, int v, char c);
-  vector<edge>::iterator edge_begin(int u);
-  vector<edge>::iterator edge_end(int u);
-  int node_sz();
+  vector<edge>::iterator edge_begin(int u) const;
+  vector<edge>::iterator edge_end(int u) const;
+  int node_sz() const;
 };
 
 #endif
