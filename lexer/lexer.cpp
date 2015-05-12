@@ -367,7 +367,10 @@ int match (FILE*& in, FILE*& out, graph& dfa)
   while (!feof(in))
     {
       if (bck_buf.empty())
-	readin = fgetc(in);
+	{
+	  readin = fgetc(in);
+	  readin = tolower(readin);
+	}
       else
         {
 	  readin = bck_buf.front();
