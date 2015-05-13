@@ -446,7 +446,7 @@ int match (FILE*& in, FILE*& out, graph& dfa)
   if (tsz && dfa_ter_type[state] != -1)
     {
       buffer[tsz] = 0;
-      fprintf(out,"< %d , %s >", res, buffer);
+      fprintf(out,"< %d , %s >\n", res, buffer);
     }
   else if (tsz)
     return -1;

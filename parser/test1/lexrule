@@ -1,0 +1,7 @@
+add: +;
+sub: -;
+mul: *;
+div: /;
+lparent: (;
+rparent: );
+var: i;
