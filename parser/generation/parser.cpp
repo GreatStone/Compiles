@@ -13,10 +13,14 @@ using namespace std;
 vector<string> rules;
 map<string, int> symbol_id;
 vector<string> symbols;
+int empty_id;
 map<int ,vector< vector<int> > > formulas;
 vector< pair< int, string > > srcs;
+vector< bitset< max_terminal > > firstset;
+vector < vector < bitset < max_terminal > > > fml_firstset;
 
 
+/*empty string be the final terminal symbol none*/
 void load_rules (FILE* in)
 {
   char readin[200];
@@ -44,6 +48,9 @@ void load_rules (FILE* in)
       readin[tsz] = 0;
       rules.push_back(string(readin));
     }
+  symbol_id.insert (make_pair ("none",symbol_id.size()));
+  rules.push_back("");
+  empty_id = symbol_id.size()-1;
 }
 
 /*
@@ -54,21 +61,17 @@ int load_formulas()
   int i;
   for (i = 0; i < symbol_id.size(); i++)
     {
-      formulas.push_back(vector<int>());
-    }
-  for (i = 0; i < symbol_id.size(); i++)
-    {
       vector < vector<int> > curformula;
       vector <int> inserted;
       int j;
-      char* ins = rules[i].c_str();
+      const char* ins = rules[i].c_str();
       for (j = 0; j < rules[i].length(); j++)
 	{
 	  char tmp_symbol[20];
 	  if (ins[j] == '[')
 	    {
-	      sscanf(ins+j+1,"%[^\]]",tmpsymbol);
-	      int len = strlen(tmpsymbol);
+	      sscanf(ins+j+1,"%[^]]",tmp_symbol);
+	      int len = strlen(tmp_symbol);
 	      j += len + 1;
 	      int x;
 	      sscanf(tmp_symbol,"%d",&x);
@@ -76,14 +79,14 @@ int load_formulas()
 	    }
 	  else if (ins[j] == '<')
 	    {
-	      sscanf(ins+j+1,"%[^>]",tmpsymbol);
-	      int len = strlen(tmpsymbol);
+	      sscanf(ins+j+1,"%[^>]",tmp_symbol);
+	      int len = strlen(tmp_symbol);
 	      j += len+1;
-	      map<int, vector< vector <int> > > :: iterator it;
-	      it = formulas.find (string(tmpsymbol));
-	      if (it == formulas.end())
+	      map<string, int> :: iterator it;
+	      it = symbol_id.find (string(tmp_symbol));
+	      if (it == symbol_id.end())
 		return -1;
-	      inserted.push_back (it->first);
+	      inserted.push_back (it->second);
 	    }
 	  if (ins[j] == '|' || j == rules[i].length() -1)
 	    {
@@ -92,6 +95,68 @@ int load_formulas()
 	}
       formulas.insert (make_pair(i, curformula));
     }
+}
+
+void gen_firstset ()
+{
+  char* vis = (char*) malloc(sizeof(char) * symbol_id.size());
+  memset (vis, 0, sizeof(char) * symbol_id.size());
+  int i,j,k;
+  for (i = 0; i < symbol_id.size(); i++)
+    {
+      vector< bitset<max_terminal> > cur_fml_firstset;
+      vector< vector<int> > & x = formulas.find(i)->second;
+      bitset< max_terminal > symbol_fset;
+      for (j = 0; j < x.size(); j++)
+	{
+	  bitset< max_terminal > inserted;
+	  for (k = 0; k < x[j].size(); k++)
+	    {
+	      inserted = gen_firstset(x[j][k], vis);
+	      if (!inserted.none())
+		break;
+	    }
+	  cur_fml_firstset.push_back(inserted);
+	  symbol_fset = symbol_fset | inserted;
+	}
+      fml_firstset.push_back (cur_fml_firstset);
+      firstset.push_back (symbol_fset);
+    }
+}
+
+bitset < max_terminal > gen_firstset (int src, char* vis)
+{
+  bitset< max_terminal > ret;
+  vis[src] = 1;
+  vector< vector<int> > & cur = formulas.find(src)->second;
+  int len = cur.size();
+  int i;
+  for (i = 0; i < len; i++)
+    {
+      if (cur[i].empty())
+	continue;
+      if (cur[i][0] < 0)
+	{
+	  ret.set (-cur[i][0] + 1);
+	  continue;
+	}
+      else
+	{
+	  int j;
+	  bitset< max_terminal > tmp;
+	  for (j = 0; j < cur[i].size(); j++)
+	    {
+	      tmp = gen_firstset (cur[i][j], vis);
+	      if (!tmp.none())
+		{
+		  ret = ret | tmp;
+		  break;
+		}
+	    }
+	}
+    }
+  vis[src] = 0;
+  return ret;
 }
 
 int main(int argc, char* argv[])
