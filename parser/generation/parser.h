@@ -15,4 +15,8 @@ void gen_firstset ();
 
 bitset < max_terminal > gen_firstset (int src, char* vis);
 
+int match();
+
+void load_src(FILE* in);
+
 #endif

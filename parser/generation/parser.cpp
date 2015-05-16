@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <stack>
 using namespace std;
 
 vector<string> rules;
@@ -19,6 +20,28 @@ vector< pair< int, string > > srcs;
 vector< bitset< max_terminal > > firstset;
 vector < vector < bitset < max_terminal > > > fml_firstset;
 
+void load_src (FILE* in)
+{
+  char readin[200];
+  while (!feof(in))
+    {
+      if (fgets (readin, 200, in) == NULL)
+	{
+	  return;
+	}
+      int id;
+      char content[200];
+      sscanf (readin, "< %d , %[^\n]", &id, readin);
+      int len = strlen(readin);
+      for (int i = 0; i < len-2; i++)
+	{
+	  content[i] = readin[i];
+	}
+      content[len-1] = 0;
+      srcs.push_back(pair<int, string>(id,content));
+    }
+  return;
+}
 
 /*empty string be the final terminal symbol none*/
 void load_rules (FILE* in)
@@ -91,6 +114,7 @@ int load_formulas()
 	  if (ins[j] == '|' || j == rules[i].length() -1)
 	    {
 	      curformula.push_back(inserted);
+	      inserted.clear();
 	    }
 	}
       formulas.insert (make_pair(i, curformula));
@@ -112,7 +136,12 @@ void gen_firstset ()
 	  bitset< max_terminal > inserted;
 	  for (k = 0; k < x[j].size(); k++)
 	    {
-	      inserted = gen_firstset(x[j][k], vis);
+	      if (x[j][k] < 0)
+		inserted.set(-x[j][k]-1);
+	      else if (x[j][k] == empty_id)
+		inserted.set(empty_id);
+	      else
+		inserted = gen_firstset(x[j][k], vis);
 	      if (!inserted.none())
 		break;
 	    }
@@ -137,7 +166,7 @@ bitset < max_terminal > gen_firstset (int src, char* vis)
 	continue;
       if (cur[i][0] < 0)
 	{
-	  ret.set (-cur[i][0] + 1);
+	  ret.set (-cur[i][0] - 1);
 	  continue;
 	}
       else
@@ -159,19 +188,116 @@ bitset < max_terminal > gen_firstset (int src, char* vis)
   return ret;
 }
 
+int match ()
+{
+  int cur = 0;
+  stack<int> sym_stk;
+  sym_stk.push(0x3f3f3f3f);
+  sym_stk.push(0);
+  while (sym_stk.size() > 1)
+    {
+      int top = sym_stk.top();
+      if (top < 0)
+	{
+	  if (cur == srcs.size())
+	    {
+	      return -1;
+	    }
+
+	  if (-top-1 == srcs[cur].first)
+	    {
+	      sym_stk.pop();
+	      cur++;
+	    }
+	  else
+	    {
+	      return -1;
+	    }
+	}
+      else
+	{
+	  if (cur == srcs.size())
+	    {
+	      if (firstset[top].test(empty_id))
+		{
+		  sym_stk.pop();
+		  continue;
+		}
+	      else
+		return -1;
+	    }
+
+	  int i;
+	  int pass = 1;
+	  int hasnone = 0;
+	  for (i = 0; i < fml_firstset[top].size(); i++)
+	    {
+	      if (fml_firstset[top][i].test(empty_id))
+		hasnone = 1;
+	      if (fml_firstset[top][i].test(srcs[cur].first))
+		{
+		  pass = 0;
+		  vector<int> & tmp = formulas.find(top)->second[i];
+		  int j;
+		  sym_stk.pop();
+		  for (j = tmp.size()-1; j >= 0; j--)
+		    {
+		      sym_stk.push(tmp[j]);
+		    }
+		  break;
+		}
+	    }
+	  if (pass && !hasnone)
+	    {
+	      return -1;
+	    }
+	  else if (pass && hasnone)
+	    {
+	      sym_stk.pop();
+	    }
+	}
+    }
+  if (sym_stk.size() != 1 || cur != srcs.size())
+    return -2;
+  return 0;
+}
+
 int main(int argc, char* argv[])
 {
-  if (argc != 4)
+  if (argc != 3)
     {
       printf("parameter error!\n");
       return -1;
     }
   char frule[200];
   char fin[200];
-  char fout[200];
-  sprintf (frule, "%s", argv[0]);
-  sprintf (fin, "%s", argv[1]);
-  sprintf (fout, "%s", argv[2]);
+  sprintf (frule, "%s", argv[1]);
+  sprintf (fin, "%s", argv[2]);
+
   FILE* rule = fopen(frule, "r");
   load_rules(rule);
+  load_formulas();
+  fclose(rule);
+
+  gen_firstset();
+
+  FILE* in = fopen(fin, "r");
+  load_src(in);
+  fclose(in);
+  
+  int res = match();
+  if (res == 0)
+    {
+      printf("Check pass: \n");
+    }
+  else
+    {
+      printf("Check not pass: \n");
+    }
+  int i;
+  for (i = 0; i < srcs.size(); i++)
+    {
+      printf("%s ",srcs[i].second.c_str());
+    }
+  printf("\n");
 }
