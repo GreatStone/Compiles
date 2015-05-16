@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
 {
   if (argc != 3)
     {
-      printf("parameters error");
+      printf("parameters error\n");
       return -1;
     }
   char fin[200];
@@ -145,33 +145,28 @@ int main(int argc, char* argv[])
   cout << "contents end" << endl;
   cur = 0;
   FILE* out = fopen(fout, "w");
-  while (cur != contents.size())
+  if ( accept_E() && contents.size() == cur )
     {
-      int bef = cur;
-      if ( accept_E() )
+      fprintf(out, "pass:\n");
+      cout << "pass" << endl;
+      for (int i = 0; i < contents.size(); i++)
 	{
-	  fprintf(out, "pass:\n");
-	  cout << "pass" << endl;
-	  for (int i = bef; i < cur; i++)
-	    {
-	      fprintf(out, "%s ", contents[i].second.c_str());
-	      printf("%s ", contents[i].second.c_str());
-	    }
-	  fprintf(out,"\n");
-	  cout << endl;
+	  fprintf(out, "%s ", contents[i].second.c_str());
+	  printf("%s ", contents[i].second.c_str());
 	}
-      else
+      fprintf(out,"\n");
+      cout << endl;
+    }
+  else
+    {
+      fprintf(out, "not pass:\n");
+      cout << "npass" << endl;
+      for (int i = 0; i < contents.size(); i++)
 	{
-	  fprintf(out, "not pass:\n");
-	  cout << "npass" << endl;
-	  for (int i = bef; i < contents.size(); i++)
-	    {
-	      fprintf(out, "%s ", contents[i].second.c_str());
-	      cout << contents[i].second << " ";
-	    }
-	  fprintf(out,"\n");
-	  cout << endl;
-	  break;
+	  fprintf(out, "%s ", contents[i].second.c_str());
+	  cout << contents[i].second << " ";
 	}
+      fprintf(out,"\n");
+      cout << endl;
     }
 }
