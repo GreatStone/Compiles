@@ -16,6 +16,20 @@ vector< string > rules;
 map< int, vector< vector< int > > > formulas;
 map< int, bitset< max_terminal > > firstvt;
 map< int, bitset< max_terminal > > lastvt;
+char relations[max_terminal][max_terminal];       //0 for equal, 1 for lt, 2 for gt, -1 for nothing
+
+void show_bitset(const bitset< max_terminal >& x)
+{
+  int i;
+  for (i = 0; i < max_terminal; i++)
+    {
+      if (x.test(i))
+	{
+	  cout << i << "  ";
+	}
+    }
+  cout << endl;
+}
 
 void load_rules (FILE* in)
 {
@@ -91,7 +105,6 @@ int load_formulas()
     }
 }
 
-
 void load_src (FILE* in)
 {
   char readin[200];
@@ -120,12 +133,176 @@ void load_src (FILE* in)
 */
 void gen_firstvt ()
 {
-  
+  int mark;
+  int i;
+  for (i = 0; i < symbols.size(); i++)
+    {
+      firstvt.insert (make_pair (i, bitset< max_terminal > ()));
+    }
+  while (1)
+    {
+      mark = 0;
+      map< int, vector< vector< int > > >::iterator it;
+      for (it = formulas.begin(); it != formulas.end(); it++)
+	{
+	  vector< vector< int > > & cur = it->second;
+	  bitset< max_terminal > & ret = firstvt.find (it->first)->second;
+	  for (i = 0; i < cur.size(); i++)
+	    {
+	      if (cur[i][0] < 0)
+		{
+		  int tmp = - cur[i][0] - 1;
+		  if (!ret.test(tmp))
+		    {
+		      mark = 1;
+		      ret.set(tmp);
+		    }
+		}
+	      else if (cur[i].size() > 1 && cur[i][1] < 0)
+		{
+		  int tmp = - cur[i][1] - 1;
+		  if (!ret.test(tmp))
+		    {
+		      mark = 1;
+		      ret.set(tmp);
+		    }
+		}
+	      
+	      if (cur[i][0] >= 0)
+		{
+		  bitset< max_terminal > & bef = firstvt.find(cur[i][0])->second;
+		  for (int j = 0; j < max_terminal; j++)
+		    {
+		      if (!ret.test(j) && bef.test(j))
+			{
+			  ret.set(j);
+			  mark = 1;
+			}
+		    }
+		}
+	    }
+	}
+      if (!mark)
+	break;
+    }
 }
 
-void gen_firstvt (int v)
+void gen_lastvt ()
 {
-  
+  int mark;
+  int i;
+  for (i = 0; i < symbols.size(); i++)
+    {
+      lastvt.insert (make_pair (i, bitset< max_terminal > ()));
+    }
+  while (1)
+    {
+      mark = 0;
+      map< int, vector< vector< int > > >::iterator it;
+      for (it = formulas.begin(); it != formulas.end(); it++)
+	{
+	  vector< vector< int > > & cur = it->second;
+	  bitset< max_terminal > & ret = lastvt.find (it->first)->second;
+	  for (i = 0; i < cur.size(); i++)
+	    {
+	      int len = cur[i].size();
+	      if (cur[i][len-1] < 0)
+		{
+		  int tmp = - cur[i][len-1] - 1;
+		  if (!ret.test(tmp))
+		    {
+		      mark = 1;
+		      ret.set(tmp);
+		    }
+		}
+	      else if (cur[i].size() > 1 && cur[i][len-2] < 0)
+		{
+		  int tmp = - cur[i][len-2] - 1;
+		  if (!ret.test(tmp))
+		    {
+		      mark = 1;
+		      ret.set(tmp);
+		    }
+		}
+	      
+	      if (cur[i][len-1] >= 0)
+		{
+		  bitset< max_terminal > & bef = lastvt.find(cur[i][len-1])->second;
+		  for (int j = 0; j < max_terminal; j++)
+		    {
+		      if (!ret.test(j) && bef.test(j))
+			{
+			  ret.set(j);
+			  mark = 1;
+			}
+		    }
+		}
+	    }
+	}
+      if (!mark)
+	break;
+    }
+}
+
+inline int get_terminal_id (int x)
+{
+  return - x - 1;
+}
+
+void gen_relation ()
+{
+  gen_firstvt ();
+  gen_lastvt ();
+  memset (relations, -1, sizeof (relations));
+  int i, j, k;
+  map< int, vector< vector< int > > >::iterator it;
+  for (it = formulas.begin(); it != formulas.end(); it++)
+    {
+      vector< vector <int> > & cur = it->second;
+      for (i = 0; i < cur.size(); i++)
+	{
+	  vector <int> & cur_rule = cur[i];
+	  int len = cur_rule.size();
+	  if (len  == 1)
+	    continue;
+	  for (j = 0; j < len - 1; j++)
+	    {
+	      if (cur_rule[j] < 0)
+		{
+		  if (j + 2 < len && cur_rule[j+2] < 0)
+		    {
+		      relations[get_terminal_id(cur_rule[j])][get_terminal_id(cur_rule[j+2])] = 0;
+		    }
+		  if (cur_rule[j+1] < 0)
+		    {
+		      relations[get_terminal_id(cur_rule[j])][get_terminal_id(cur_rule[j+1])] = 0;
+		    }
+		  else
+		    {
+		      bitset< max_terminal > & tmp = firstvt.find (cur_rule[j+1])->second;
+		      for (k = 0; k < max_terminal; k++)
+			{
+			  if (tmp.test(k))
+			    {
+			      relations[get_terminal_id(cur_rule[j])][k] = 1;
+			    }
+			}
+		    }
+		}
+	      else
+		{
+		  bitset< max_terminal > & tmp = lastvt.find(cur_rule[j])->second;
+		  for (k = 0; k < max_terminal; k++)
+		    {
+		      if (tmp.test(k))
+			{
+			  relations[k][get_terminal_id(cur_rule[j+1])] = 2;
+			}
+		    }
+		}
+	    }
+	}
+    }
 }
 
 int main(int argc, char* argv[])
@@ -139,6 +316,9 @@ int main(int argc, char* argv[])
   char src[200];
   sprintf(rule, "%s", argv[1]);
   sprintf(src, "%s", argv[2]);
-  
+  FILE *fp = fopen (rule, "r");
+  load_rules (fp);
+  load_formulas ();
+  gen_relation ();
   return 0;
 }
