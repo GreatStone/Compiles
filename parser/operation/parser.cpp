@@ -18,19 +18,6 @@ map< int, bitset< max_terminal > > firstvt;
 map< int, bitset< max_terminal > > lastvt;
 char relations[max_terminal][max_terminal];       //0 for equal, 1 for lt, 2 for gt, -1 for nothing
 
-void show_bitset(const bitset< max_terminal >& x)
-{
-  int i;
-  for (i = 0; i < max_terminal; i++)
-    {
-      if (x.test(i))
-	{
-	  cout << i << "  ";
-	}
-    }
-  cout << endl;
-}
-
 void load_rules (FILE* in)
 {
   char readin[200];
@@ -305,6 +292,108 @@ void gen_relation ()
     }
 }
 
+int match_and_replace (int l, int r, vector<int> & __stack)
+{
+  map< int, vector< vector< int > > >::iterator it;
+  int len = r - l + 1;
+  for (it = formulas.begin(); it != formulas.end(); it++)
+    {
+      vector< vector< int > > & cur = it->second;
+      for (int i = 0; i < cur.size(); i++)
+	{
+	  vector< int > & cur_rule = cur[i];
+	  if (cur_rule.size() != len)
+	    continue;
+	  int choose = 1;
+	  for (int j = 0; j < cur_rule.size(); j++)
+	    {
+	      if (__stack[l+j] < 0)
+		{
+		  if (cur_rule[j] != __stack[l+j])
+		    {
+		      choose = 0;
+		      break;
+		    }
+		}
+	      else
+		{
+		  if (cur_rule[j] < 0)
+		    {
+		      choose = 0;
+		      break;
+		    }
+		}
+	    }
+	  if (choose)
+	    {
+	      if (len == 1)
+		__stack[l] = it->first;
+	      else
+		{
+		  __stack[l] = it->first;
+		  __stack.erase (__stack.begin() + l + 1, __stack.begin() + r + 1);
+		}
+	      return 0;
+	    }
+	}
+    }
+  return -1;
+}
+
+int statute ()
+{
+  vector<int> __stack;
+  int i;
+  for (i = 0; i < srcs.size(); i++)
+    {
+      __stack.push_back (-srcs[i].first-1);
+    }
+  while (__stack.size() > 1 || __stack[0] < 0)
+    {
+      int r = __stack.size() - 1;
+      for (i = 0; i < __stack.size() - 1; i++)
+	{
+	  if (__stack[i] >= 0)
+	    continue;
+	  if (__stack[i+1] >= 0)
+	    {
+	      if (i+2 < __stack.size() && relations[get_terminal_id(__stack[i])][get_terminal_id(__stack[i+2])] == 2)
+		{
+		  r = i+1;
+		  break;
+		}
+	    }
+	  else if (relations[get_terminal_id(__stack[i])][get_terminal_id(__stack[i+1])] == 2)
+	    {
+	      r = i;
+	      break;
+	    }
+	}
+      int l = 0;
+      for (i = r; i > 0; i--)
+	{
+	  if (__stack[i] >= 0)
+	    continue;
+	  if (__stack[i-1] >= 0)
+	    {
+	      if (i-2 >= 0 && relations[get_terminal_id(__stack[i-2])][get_terminal_id(__stack[i])] == 1)
+		{
+		  l = i-1;
+		  break;
+		}
+	    }
+	  if (relations[get_terminal_id(__stack[i-1])][get_terminal_id(__stack[i])] == 1)
+	    {
+	      l = i;
+	      break;
+	    }
+	}
+      if (match_and_replace (l, r, __stack))
+	return -1;
+    }
+  return 0;
+}
+
 int main(int argc, char* argv[])
 {
   if (argc != 3)
@@ -320,5 +409,23 @@ int main(int argc, char* argv[])
   load_rules (fp);
   load_formulas ();
   gen_relation ();
+  fclose (fp);
+  
+  fp = fopen (src,"r");
+  load_src (fp);
+  fclose (fp);
+  for (int i = 0; i < srcs.size(); i++)
+    {
+      cout << srcs[i].second << " ";
+    }
+  cout << endl;
+  if (statute ())
+    {
+      cout << "Can't be statute" << endl;
+    }
+  else
+    {
+      cout << "Can be statute" << endl;
+    }
   return 0;
 }

@@ -410,6 +410,7 @@ int match (FILE*& in, FILE*& out, graph& dfa)
 	  else
             {
 	      fseek(in,-1,SEEK_CUR);
+	      readin = '/';
             }
         }
 

@@ -1,7 +1,7 @@
 add :		+;
 sub :		-;
 mul :		*;
-div :		\/;
+div :		/;
 lparent :	(;
 rparent :	);
 var :		i;
